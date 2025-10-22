@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulador — Vida Inteira</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#0f172a;
+      --ink:#e5e7eb;
+      --muted:#94a3b8;
+      --brand:#ef4444;
+      --ok:#10b981;
+      --border:rgba(255,255,255,.08);
+      --radius:14px;
+      --shadow:0 14px 40px rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#080d1a,#0d1430 45%,#080d1a);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    header{display:flex;align-items:center;justify-content:space-between;padding:24px clamp(16px,4vw,40px)}
+    .logo{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:.3px}
+    .badge{font-size:12px;color:#fecaca;border:1px solid #fecaca;padding:4px 8px;border-radius:999px}
+    main{max-width:1200px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 64px}
+    .grid{display:grid;gap:18px}
+    @media(min-width:1000px){.grid{grid-template-columns:1.15fr .85fr}}
+    .panel{background:linear-gradient(180deg,#0c1224,#0b1326);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    h2{margin:0 0 10px 0;font-size:18px}
+    .controls{padding:22px}
+    .controls form{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+    .col-2{grid-column:span 2}
+    .col-3{grid-column:span 3}
+    .col-6{grid-column:1/-1}
+    label{font-size:13px;color:var(--muted)}
+    input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#0f172a;color:var(--ink);outline:none}
+    input:focus,select:focus{border-color:#3b82f6}
+    .switch{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0f172a}
+    .switch input[type="checkbox"]{accent-color:#3b82f6;width:18px;height:18px}
+    .actions{display:flex;gap:10px;margin-top:8px}
+    .btn{appearance:none;border:none;cursor:pointer;padding:12px 16px;border-radius:12px;font-weight:700;background:var(--brand);color:#fff;box-shadow:0 10px 20px rgba(239,68,68,.25)}
+    .btn.secondary{background:#1f2937}
+    .btn.light{background:#0ea5e9}
+    .results{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px}
+    .card{background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+    .kpi{font-size:12px;color:var(--muted)}
+    .val{font-size:20px;font-weight:800;margin-top:6px}
+    .chart-wrap{padding:14px 18px 18px 18px}
+    .footnote{font-size:12px;color:var(--muted);padding:0 18px 14px}
+    .table-wrap{overflow:auto;max-height:340px;border-top:1px dashed var(--border)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:right}
+    th:first-child,td:first-child{text-align:left}
+    .covers{padding:18px}
+    .cover-list{display:grid;gap:10px}
+    @media(min-width:640px){.cover-list{grid-template-columns:1fr 1fr}}
+    .cover-item{background:#0f172a;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .cover-item h3{margin:0 0 4px 0;font-size:15px}
+    .cover-item p{margin:0;font-size:13px;color:var(--muted)}
+    .edu{padding:18px;display:grid;gap:10px}
+    .edu .info{background:#0f172a;border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;gap:12px;align-items:flex-start}
+    .edu .info .icon{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:#172554}
+    .disclaimer{font-size:12px;color:#cbd5e1;margin-top:10px}
+    .warn{color:#fca5a5}
+    .success{color:#86efac}
+    .row-tools{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .tiny{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2"/><path d="M7 13c2.5-2.5 7.5-2.5 10 0" stroke="#ef4444" stroke-width="2" fill="none"/></svg>
+    <span>Simulador Vida Inteira</span>
+  </div>
+  <span class="badge">MVP • Ilustrativo</span>
+</header>
+
+<main class="grid">
+  <!-- ESQUERDA -->
+  <section class="panel" id="printArea">
+    <div class="controls">
+      <h2>Parâmetros da simulação</h2>
+      <form id="form" class="col-6">
+        <div class="col-2">
+          <label for="cliente">Cliente (opcional)</label>
+          <input id="cliente" type="text" placeholder="Nome do cliente"/>
+        </div>
+        <div class="col-1">
+          <label for="idade">Idade</label>
+          <input id="idade" type="number" min="14" max="85" step="1" value="35" required/>
+        </div>
+        <div class="col-1">
+          <label for="anos">Período (anos)</label>
+          <input id="anos" type="number" min="1" max="40" step="1" value="10"/>
+        </div>
+        <div class="col-2">
+          <label for="capital">Capital segurado (R$)</label>
+          <input id="capital" type="number" min="0" step="1000" value="300000"/>
+        </div>
+
+        <div class="col-6 switch">
+          <input id="usarTabela" type="checkbox"/>
+          <label for="usarTabela">Usar “tabela por idade” oficial (preenche o valor mensal recomendado)</label>
+        </div>
+
+        <div class="col-2">
+          <label for="mensal">Valor mensal (R$)</label>
+          <input id="mensal" type="number" min="0" step="50" value="1000"/>
+        </div>
+        <div class="col-2">
+          <label for="ipca">IPCA a.a. (%)</label>
+          <input id="ipca" type="number" min="0" step="0.1" value="7.8"/>
+        </div>
+        <div class="col-2">
+          <label for="adm">Taxa adm. a.a. (%)</label>
+          <input id="adm" type="number" min="0" step="0.05" value="0"/>
+        </div>
+
+        <div class="col-2">
+          <label for="cargaEntrada">Carreg. de entrada (%)</label>
+          <input id="cargaEntrada" type="number" min="0" step="0.1" value="0"/>
+        </div>
+        <div class="col-2">
+          <label for="cargaResgate">Carreg. sobre resgate (%)</label>
+          <input id="cargaResgate" type="number" min="0" step="0.1" value="0"/>
+        </div>
+        <div class="col-2">
+          <label for="ir">IR sobre rendimentos (%)</label>
+          <input id="ir" type="number" min="0" step="0.5" value="0"/>
+        </div>
+
+        <div class="col-6 switch">
+          <input id="adiantado" type="checkbox"/>
+          <label for="adiantado">Contribuir no <b>início</b> de cada mês (anuidade antecipada)</label>
+        </div>
+        <div class="col-6 switch">
+          <input id="corrigirAporte" type="checkbox"/>
+          <label for="corrigirAporte">Corrigir o <b>aporte</b> anualmente pelo IPCA</label>
+        </div>
+
+        <div class="col-6 actions">
+          <button class="btn" type="submit">Simular</button>
+          <button class="btn secondary" type="button" id="baixarCsv">Baixar CSV</button>
+          <button class="btn light" type="button" id="baixarPdf">Baixar PDF</button>
+        </div>
+        <div class="col-6 row-tools tiny">
+          <input type="file" id="fileTabela" accept=".json"/>
+          <label for="fileTabela">Carregar tabela oficial (age_table.json)</label>
+          <input type="file" id="fileCoberturas" accept=".json" style="margin-left:10px"/>
+          <label for="fileCoberturas">Carregar coberturas (coberturas.json)</label>
+          <span id="msgTabela" style="margin-left:10px"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="edu">
+      <div class="info">
+        <div class="icon" aria-hidden="true">🛡️</div>
+        <div>
+          <strong>Proteção da família (MORTE)</strong>
+          <div class="tiny">Na ausência do provedor, os beneficiários recebem o <b>Capital Segurado</b> contratado, garantindo estabilidade financeira.</div>
+        </div>
+      </div>
+      <div class="info">
+        <div class="icon" aria-hidden="true">🌱</div>
+        <div>
+          <strong>Benefício em vida (RESERVA)</strong>
+          <div class="tiny">Se “nada acontecer”, o segurado forma uma <b>reserva em vida</b> com base nos aportes e na correção, aproveitando o valor no futuro.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="results" aria-live="polite">
+      <div class="card"><div class="kpi">Valor em vida estimado (líquido)</div><div class="val" id="kpiVidaLiq">—</div></div>
+      <div class="card"><div class="kpi">Capital segurado</div><div class="val" id="kpiCS">—</div></div>
+      <div class="card"><div class="kpi">Depósitos acumulados (líquidos)</div><div class="val" id="kpiDepLiq">—</div></div>
+      <div class="card"><div class="kpi">Rendimentos líquidos estimados</div><div class="val" id="kpiRendLiq">—</div></div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart" height="120" aria-label="Gráfico: Saldo líquido, Depósitos acumulados e Capital Segurado" role="img"></canvas>
+    </div>
+    <div class="footnote">
+      * Projeção nominal com IPCA constante. Custos modelados: carregamento de entrada, taxa de administração (mensal eq.), carregamento sobre resgate e IR opcional. <br/>
+      * Não substitui cotações/projeções atuariais do produto. Consulte Condições Gerais.
+    </div>
+
+    <div class="table-wrap">
+      <table id="tabela">
+        <thead>
+          <tr><th>Mês</th><th>Depósito bruto</th><th>Carreg. entrada</th><th>Depósito líquido</th><th>Depósitos acumulados</th><th>Saldo líquido</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DIREITA: COBERTURAS -->
+  <aside class="panel covers">
+    <h2>Coberturas (substitua pelo oficial)</h2>
+    <div class="cover-list" id="covers"></div>
+    <p class="disclaimer">
+      Estes textos são exemplos. Troque pelos **oficiais** do produto (arquivo <code>coberturas.json</code>).
+    </p>
+
+    <h2>Resumo dos cenários</h2>
+    <div class="cover-list">
+      <div class="cover-item">
+        <h3>Se ocorrer <b>falecimento</b> durante a vigência</h3>
+        <p>Beneficiários recebem: <b id="escenarioMorte">—</b></p>
+      </div>
+      <div class="cover-item">
+        <h3>Se “nada acontecer” até o final do período</h3>
+        <p>Reserva estimada (líquida): <b id="escenarioVida">—</b></p>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* =================== CÁLCULOS =================== */
+const fmtBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const pct = v => (v/100);
+const taxaMensal = aa => Math.pow(1+aa,1/12)-1;
+
+/** Busca em tabela de idade */
+let TABELA_IDADE = null; // será carregada de age_table.json ou upload
+let COBERTURAS = null;   // idem
+
+async function tentaCarregarArquivoPadrao(){
+  // Carrega age_table.json e coberturas.json se existirem na mesma pasta
+  try{
+    const r = await fetch('age_table.json',{cache:'no-store'});
+    if(r.ok){ TABELA_IDADE = await r.json(); setMsg('Tabela oficial carregada automaticamente.'); }
+  }catch(e){/* ignore */}
+  try{
+    const r2 = await fetch('coberturas.json',{cache:'no-store'});
+    if(r2.ok){ COBERTURAS = await r2.json(); montaCoberturas(); }
+  }catch(e){/* ignore */}
+}
+tentaCarregarArquivoPadrao();
+
+function buscaRecomendadoPorIdade(idade){
+  if(!TABELA_IDADE) return null;
+  for(const faixa of TABELA_IDADE){
+    if(idade>=faixa.min && idade<=faixa.max) return faixa.valorMensal ?? faixa.recomendado ?? null;
+  }
+  return null;
+}
+
+/** Simulação principal */
+function simular(params){
+  const {
+    idade, anos, mensalBruto, ipcaAA, adiantado,
+    corrigeAporte, cargaEntradaPct, taxaAdmAA, cargaResgatePct,
+    aplicaIR, irPct
+  } = params;
+
+  const nMeses = anos*12;
+  const i_ipca = taxaMensal(ipcaAA);
+  const i_adm  = taxaMensal(taxaAdmAA);
+  const fatorCrescimento = (1+i_ipca)*(1 - i_adm) - 1; // aproxima a adm como "drag" mês a mês
+
+  let saldo = 0, somaDepLiq = 0, somaCargaEntrada = 0;
+  const labels=[], serieSaldo=[], serieDepAcum=[];
+
+  const linhas=[];
+  for(let m=1; m<=nMeses; m++){
+    const anoPassado = Math.floor((m-1)/12);
+    const aporteBruto = corrigeAporte ? mensalBruto * Math.pow(1+ipcaAA, anoPassado) : mensalBruto;
+    const cargaEntrada = aporteBruto * pct(cargaEntradaPct);
+    const aporteLiq = Math.max(0, aporteBruto - cargaEntrada);
+
+    if(adiantado){
+      // Depósito no início
+      saldo += aporteLiq;
+      saldo *= (1 + fatorCrescimento);
+    }else{
+      // Depósito no fim
+      saldo *= (1 + fatorCrescimento);
+      saldo += aporteLiq;
+    }
+
+    somaDepLiq += aporteLiq;
+    somaCargaEntrada += cargaEntrada;
+
+    labels.push(`M${m}`);
+    serieSaldo.push(saldo);
+    serieDepAcum.push(somaDepLiq);
+    linhas.push({m, aporteBruto, cargaEntrada, aporteLiq, depAcum:somaDepLiq, saldo});
+  }
+
+  // Resgate
+  const cargaResgate = saldo * pct(cargaResgatePct);
+  let rendimentos = Math.max(0, saldo - somaDepLiq);
+  let ir = 0;
+  if(aplicaIR){
+    ir = rendimentos * pct(irPct);
+  }
+  const valorVidaLiq = Math.max(0, saldo - cargaResgate - ir);
+
+  return {
+    labels, serieSaldo, serieDepAcum, linhas,
+    kpis: {
+      valorVidaLiq, totalDepositadoLiq: somaDepLiq,
+      rendLiq: Math.max(0, valorVidaLiq - somaDepLiq),
+      cargaEntradaTotal: somaCargaEntrada,
+      cargaResgate, ir, saldoFinalBruto: saldo
+    }
+  };
+}
+
+/* =================== UI =================== */
+const el = {
+  cliente: document.getElementById('cliente'),
+  idade: document.getElementById('idade'),
+  anos: document.getElementById('anos'),
+  capital: document.getElementById('capital'),
+  usarTabela: document.getElementById('usarTabela'),
+  mensal: document.getElementById('mensal'),
+  ipca: document.getElementById('ipca'),
+  adm: document.getElementById('adm'),
+  cargaEntrada: document.getElementById('cargaEntrada'),
+  cargaResgate: document.getElementById('cargaResgate'),
+  ir: document.getElementById('ir'),
+  adiantado: document.getElementById('adiantado'),
+  corrigirAporte: document.getElementById('corrigirAporte'),
+  form: document.getElementById('form'),
+  kpiVidaLiq: document.getElementById('kpiVidaLiq'),
+  kpiCS: document.getElementById('kpiCS'),
+  kpiDepLiq: document.getElementById('kpiDepLiq'),
+  kpiRendLiq: document.getElementById('kpiRendLiq'),
+  tabelaBody: document.querySelector('#tabela tbody'),
+  covers: document.getElementById('covers'),
+  chartCanvas: document.getElementById('chart'),
+  baixarCsv: document.getElementById('baixarCsv'),
+  baixarPdf: document.getElementById('baixarPdf'),
+  escenarioMorte: document.getElementById('escenarioMorte'),
+  escenarioVida: document.getElementById('escenarioVida'),
+  fileTabela: document.getElementById('fileTabela'),
+  fileCoberturas: document.getElementById('fileCoberturas'),
+  msgTabela: document.getElementById('msgTabela'),
+  printArea: document.getElementById('printArea')
+};
+let chart;
+
+function setMsg(t){ el.msgTabela.textContent = t; }
+
+function montaCoberturas(){
+  const data = COBERTURAS ?? [
+    {"titulo":"Morte (Cobertura Básica)","detalhe":"Pagamento do capital segurado aos beneficiários.","limite":"CS","carencia":"—","exclusoes":"—"},
+    {"titulo":"IPA","detalhe":"Indenização por invalidez por acidente.","limite":"Até limite contratado","carencia":"—","exclusoes":"—"}
+  ];
+  el.covers.innerHTML = '';
+  for(const c of data){
+    const div = document.createElement('div');
+    div.className='cover-item';
+    div.innerHTML = `<h3>${c.titulo}</h3>
+    <p>${c.detalhe}</p>
+    <p class="tiny"><b>Limite:</b> ${c.limite || '—'}<br/>
+    <b>Carência:</b> ${c.carencia || '—'}<br/>
+    <b>Exclusões:</b> ${c.exclusoes || '—'}</p>`;
+    el.covers.appendChild(div);
+  }
+}
+
+el.usarTabela.addEventListener('change', () => {
+  if(el.usarTabela.checked){
+    if(!TABELA_IDADE){
+      setMsg('Ativei o modo tabela, mas nenhum arquivo oficial foi carregado. Use o botão ou coloque um age_table.json ao lado do index.html.');
+      el.mensal.removeAttribute('disabled');
+      return;
+    }
+    const rec = buscaRecomendadoPorIdade(Number(el.idade.value));
+    if(rec){
+      el.mensal.value = rec;
+      el.mensal.setAttribute('disabled','disabled');
+      setMsg('Valor mensal preenchido pela tabela oficial.');
+    }else{
+      setMsg('Sem faixa correspondente para esta idade na tabela.');
+      el.mensal.removeAttribute('disabled');
+    }
+  }else{
+    el.mensal.removeAttribute('disabled');
+    setMsg('');
+  }
+});
+
+el.idade.addEventListener('input', () => {
+  if(el.usarTabela.checked && TABELA_IDADE){
+    const rec = buscaRecomendadoPorIdade(Number(el.idade.value));
+    if(rec){ el.mensal.value = rec; setMsg('Valor mensal ajustado pela tabela.'); }
+  }
+});
+
+el.fileTabela.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    TABELA_IDADE = JSON.parse(text);
+    setMsg('Tabela oficial carregada via arquivo.');
+    if(el.usarTabela.checked){
+      const rec = buscaRecomendadoPorIdade(Number(el.idade.value));
+      if(rec){ el.mensal.value = rec; el.mensal.setAttribute('disabled','disabled'); }
+    }
+  }catch(err){ setMsg('Falha ao ler JSON da tabela.'); }
+});
+
+el.fileCoberturas.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    COBERTURAS = JSON.parse(text);
+    montaCoberturas();
+  }catch(err){ setMsg('Falha ao ler JSON de coberturas.'); }
+});
+
+function renderChart(labels, saldo, depositos, capital){
+  if(chart) chart.destroy();
+  const ctx = el.chartCanvas.getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Saldo acumulado (líquido)', data: saldo, borderWidth: 2, tension:.2 },
+        { label: 'Depósitos acumulados (líquidos)', data: depositos, borderWidth: 2, borderDash:[6,6], tension:.2 },
+        { label: 'Capital segurado', data: labels.map(_=>capital), borderWidth: 1.5, borderDash:[2,4], pointRadius:0, tension:0 }
+      ]
+    },
+    options: {
+      responsive:true,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{ labels:{ color:'#e5e7eb' } },
+        tooltip:{ callbacks:{ label: ctx => `${ctx.dataset.label}: ${fmtBRL(ctx.raw)}` } }
+      },
+      scales:{
+        x:{ ticks:{ color:'#cbd5e1' }, grid:{ color:'rgba(148,163,184,.15)' } },
+        y:{ ticks:{ color:'#cbd5e1', callback:v => fmtBRL(v) }, grid:{ color:'rgba(148,163,184,.15)' } }
+      }
+    }
+  });
+}
+
+function preencheTabela(linhas){
+  el.tabelaBody.innerHTML = linhas.map(l=>`<tr>
+    <td>M${l.m}</td>
+    <td>${fmtBRL(l.aporteBruto)}</td>
+    <td>${fmtBRL(l.cargaEntrada)}</td>
+    <td>${fmtBRL(l.aporteLiq)}</td>
+    <td>${fmtBRL(l.depAcum)}</td>
+    <td>${fmtBRL(l.saldo)}</td>
+  </tr>`).join('');
+}
+
+function executar(){
+  const idade = Number(el.idade.value);
+  const anos = Number(el.anos.value)||10;
+  const capital = Number(el.capital.value)||0;
+
+  let mensal = Number(el.mensal.value)||0;
+  if(el.usarTabela.checked){
+    const rec = buscaRecomendadoPorIdade(idade);
+    if(rec) mensal = rec;
+  }
+
+  const ipcaAA = (Number(el.ipca.value)||0)/100;
+  const taxaAdmAA = (Number(el.adm.value)||0)/100;
+  const cargaEntradaPct = Number(el.cargaEntrada.value)||0;
+  const cargaResgatePct = Number(el.cargaResgate.value)||0;
+  const aplicaIR = (Number(el.ir.value)||0) > 0;
+  const irPct = Number(el.ir.value)||0;
+
+  const {labels, serieSaldo, serieDepAcum, linhas, kpis} = simular({
+    idade, anos, mensalBruto: mensal, ipcaAA,
+    adiantado: el.adiantado.checked,
+    corrigeAporte: el.corrigirAporte.checked,
+    cargaEntradaPct, taxaAdmAA, cargaResgatePct,
+    aplicaIR, irPct
+  });
+
+  // KPIs
+  el.kpiVidaLiq.textContent = fmtBRL(kpis.valorVidaLiq);
+  el.kpiCS.textContent = fmtBRL(capital);
+  el.kpiDepLiq.textContent = fmtBRL(kpis.totalDepositadoLiq);
+  el.kpiRendLiq.textContent = fmtBRL(Math.max(0, kpis.valorVidaLiq - kpis.totalDepositadoLiq));
+
+  // Cenários
+  document.getElementById('escenarioMorte').textContent = fmtBRL(capital);
+  document.getElementById('escenarioVida').textContent = fmtBRL(kpis.valorVidaLiq);
+
+  // Tabela + gráfico
+  preencheTabela(linhas);
+  renderChart(labels, serieSaldo, serieDepAcum, capital);
+
+  // CSV
+  el.baixarCsv.onclick = () => downloadCSV(linhas);
+
+  // PDF
+  el.baixarPdf.onclick = async () => {
+    await downloadPDF({
+      cliente: el.cliente.value.trim(),
+      idade, anos, capital, mensal, ipcaAA, taxaAdmAA,
+      cargaEntradaPct, cargaResgatePct, aplicaIR, irPct,
+      valorVidaLiq: kpis.valorVidaLiq, totalDepositadoLiq: kpis.totalDepositadoLiq
+    });
+  };
+}
+
+function downloadCSV(linhas){
+  const head = "Mes,Deposito_Bruto,Carreg_Entrada,Deposito_Liquido,Depositos_Acumulados,Saldo\n";
+  const body = linhas.map(l => [
+    l.m,
+    l.aporteBruto.toFixed(2),
+    l.cargaEntrada.toFixed(2),
+    l.aporteLiq.toFixed(2),
+    l.depAcum.toFixed(2),
+    l.saldo.toFixed(2)
+  ].join(",")).join("\n");
+  const blob = new Blob([head + body], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'simulacao_vida_inteira.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function downloadPDF(ctx){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const pad = 28;
+  let y = 40;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Simulador — Vida Inteira', pad, y); y += 18;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  const dataStr = new Date().toLocaleDateString('pt-BR');
+  doc.text(`Cliente: ${ctx.cliente || '—'}  |  Data: ${dataStr}`, pad, y); y += 20;
+
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('Parâmetros', pad, y); y += 14;
+  doc.setFont('helvetica','normal');
+  const linhas = [
+    `Idade: ${document.getElementById('idade').value}  |  Período: ${document.getElementById('anos').value} anos`,
+    `Capital segurado: ${fmtBRL(ctx.capital)}  |  Valor mensal: ${fmtBRL(ctx.mensal)}`,
+    `IPCA a.a.: ${(ctx.ipcaAA*100).toFixed(2)}%  |  Taxa adm. a.a.: ${(ctx.taxaAdmAA*100).toFixed(2)}%`,
+    `Carreg. entrada: ${ctx.cargaEntradaPct.toFixed(2)}%  |  Carreg. resgate: ${ctx.cargaResgatePct.toFixed(2)}%  |  IR rend.: ${ctx.aplicaIR?ctx.irPct.toFixed(1)+'%':'n/a'}`
+  ];
+  for(const lin of linhas){ doc.text(lin, pad, y); y += 14; }
+
+  y += 4; doc.setFont('helvetica','bold');
+  doc.text('Cenários', pad, y); y += 14;
+  doc.setFont('helvetica','normal');
+  doc.text(`Falecimento: Beneficiários recebem ${fmtBRL(ctx.capital)}`, pad, y); y += 14;
+  doc.text(`Sobrevivência: Reserva estimada (líquida) ${fmtBRL(ctx.valorVidaLiq)}`, pad, y); y += 20;
+
+  // Captura do gráfico
+  const chartEl = document.getElementById('chart');
+  const chartCanvas = chartEl;
+  const chartImg = chartCanvas.toDataURL('image/png', 1.0);
+  const imgW = 530, imgH = imgW * (chartCanvas.height/chartCanvas.width);
+  doc.addImage(chartImg, 'PNG', pad, y, imgW, imgH); y += imgH + 16;
+
+  doc.setFontSize(9);
+  doc.text('Projeção nominal com IPCA constante; ilustrações sujeitas a variação. Este material é ilustrativo e não substitui as Condições Gerais do produto.', pad, y);
+
+  doc.save('simulacao_vida_inteira.pdf');
+}
+
+/* Eventos */
+document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); executar(); });
+window.addEventListener('DOMContentLoaded', () => { montaCoberturas(); executar(); });
+</script>
+</body>
+</html>

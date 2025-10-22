@@ -1,0 +1,30 @@
+[
+  {
+    "titulo": "Morte (Cobertura Básica)",
+    "detalhe": "Pagamento do capital segurado aos beneficiários em caso de falecimento do segurado, conforme apólice.",
+    "limite": "Definido como Capital Segurado (CS) contratado",
+    "carencia": "Pode haver carência para morte natural. Consulte Condições Gerais.",
+    "exclusoes": "Riscos excluídos conforme apólice (ex.: atos ilícitos, etc.)"
+  },
+  {
+    "titulo": "Invalidez Permanente por Acidente (IPA)",
+    "detalhe": "Indenização conforme grau de invalidez por acidente coberto.",
+    "limite": "Até o limite de IPA contratado",
+    "carencia": "Geralmente sem carência para acidentes",
+    "exclusoes": "Exclusões de acordo com Condições Gerais"
+  },
+  {
+    "titulo": "Doenças Graves (se contratado)",
+    "detalhe": "Antecipação/indenização em caso de diagnóstico de doença grave coberta.",
+    "limite": "Até o limite contratado",
+    "carencia": "Carência típica de 90 dias (exemplo)",
+    "exclusoes": "Lista específica de patologias e exclusões"
+  },
+  {
+    "titulo": "Assistências (se aplicável)",
+    "detalhe": "Serviços de assistência (ex.: funeral, orientação) conforme escopo da apólice.",
+    "limite": "Conforme Condições Gerais",
+    "carencia": "Pode haver",
+    "exclusoes": "Conforme apólice"
+  }
+]
